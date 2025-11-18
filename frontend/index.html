@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>AI Email Classifier | Classificação Inteligente</title>
+
+    <!-- CSS -->
+    <<link rel="stylesheet" href="/static/css/style.css" />
+    <link rel="stylesheet" href="/static/css/animations.css" />
+
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <svg class="logo-icon" width="36" height="36" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                </svg>
+                <div>
+                    <h1>Email Classifier AI</h1>
+                    <p class="subtitle">Classificação automática de emails — produtivo vs improdutivo</p>
+                </div>
+            </div>
+
+            <div class="header-info" aria-hidden="false">
+                <div class="stats">
+                    <div class="stat-item" title="Acurácia estimada">
+                        <svg class="stat-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                        <span>Precisão: <strong id="statAccuracy">—</strong></span>
+                    </div>
+                    <div class="stat-item" title="Tempo médio">
+                        <svg class="stat-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42C16.07 4.74 14.12 4 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
+                        <span>Tempo: <strong id="statTime">—</strong></span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content" role="main">
+            <!-- Upload / Input -->
+            <section class="upload-section" aria-labelledby="analyzeTitle">
+                <div class="section-header">
+                    <svg class="section-icon" width="36" height="36" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+                    </svg>
+                    <h2 id="analyzeTitle">Analisar Email</h2>
+                    <p>Cole o conteúdo do e-mail ou envie um arquivo (.txt ou .pdf).</p>
+                </div>
+
+                <div class="upload-options" role="region" aria-label="Opções de entrada">
+                    <!-- Texto direto -->
+                    <div class="input-option active" data-option="text" tabindex="0" role="button" aria-pressed="true">
+                        <div class="option-header">
+                            <svg class="option-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                            <h3>Texto Direto</h3>
+                        </div>
+                        <div class="option-content">
+                            <textarea id="emailText" placeholder="Cole o texto do email aqui..." rows="8" aria-label="Texto do email"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Upload -->
+                    <div class="input-option" data-option="file" tabindex="0" role="button" aria-pressed="false">
+                        <div class="option-header">
+                            <svg class="option-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                            <h3>Upload de Arquivo</h3>
+                        </div>
+
+                        <div class="option-content">
+                            <div id="fileUploadArea" class="file-upload-area" tabindex="0" aria-label="Arraste e solte arquivo aqui">
+                                <svg class="upload-icon" width="48" height="48" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                                <p>Arraste arquivos aqui ou clique para selecionar</p>
+                                <span class="file-types">Suporte: .txt, .pdf • Máx 5MB</span>
+                                <input type="file" id="fileInput" accept=".txt,.pdf" hidden>
+                                <button type="button" class="btn-secondary" id="fileSelectBtn">Selecionar Arquivo</button>
+                            </div>
+
+                            <div class="file-info" id="fileInfo" style="display:none;">
+                                <div class="file-details">
+                                    <svg class="file-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                                    <div class="file-meta">
+                                        <span class="file-name" id="fileName"></span>
+                                        <span class="file-size" id="fileSize"></span>
+                                    </div>
+                                    <div style="display:flex; gap:8px; align-items:center;">
+                                        <button class="btn-secondary" id="changeFileBtn" title="Trocar arquivo">Trocar</button>
+                                        <button class="btn-remove" onclick="removeFile()" title="Remover arquivo">Remover</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons" role="group" aria-label="Ações">
+                    <button id="analyzeBtn" class="btn-primary" onclick="processEmail()">Analisar Email</button>
+                    <button class="btn-secondary" onclick="clearForm()">Limpar</button>
+                </div>
+            </section>
+
+            <!-- Results -->
+            <section class="results-section" id="resultsSection" style="display:none;" aria-live="polite">
+                <div class="section-header">
+                    <h2>Resultado da Análise</h2>
+                    <p>Classificação automática e resposta sugerida</p>
+                </div>
+
+                <div class="results-grid">
+                    <div class="result-card">
+                        <div class="card-header"><h3>Classificação</h3></div>
+                        <div class="card-content classification-result">
+                            <div id="classificationResult">
+                                <div class="category-badge" id="categoryBadge">
+                                    <span class="category-label" id="categoryLabel"></span>
+                                    <span class="confidence" id="confidenceValue"></span>
+                                </div>
+                                <div class="confidence-bar" aria-hidden="true">
+                                    <div class="confidence-fill" id="confidenceFill" style="width:0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <div class="card-header"><h3>Resposta Sugerida</h3></div>
+                        <div class="card-content suggested-response">
+                            <div class="response-text" id="responseText" tabindex="0"></div>
+                            <div class="response-actions">
+                                <button class="btn-secondary" onclick="copyResponse()">Copiar Resposta</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <div class="card-header"><h3>Informações do Processamento</h3></div>
+                        <div class="card-content processing-info">
+                            <div class="info-item"><span class="info-label">Tempo:</span><span class="info-value" id="processingTime"></span></div>
+                            <div class="info-item"><span class="info-label">Modelo:</span><span class="info-value">BERT Multilingual</span></div>
+                            <div class="info-item"><span class="info-label">Timestamp:</span><span class="info-value" id="timestamp"></span></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display:none" aria-hidden="true">
+        <div class="loading-content">
+            <div class="loading-spinner" role="status" aria-label="Processando">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/><path d="M12 6v6l4 2"/></svg>
+            </div>
+            <h3>Analisando Email</h3>
+            <p>Processando conteúdo com IA...</p>
+        </div>
+    </div>
+
+    <!-- JS -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
