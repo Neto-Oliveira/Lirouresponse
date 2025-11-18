@@ -11,6 +11,9 @@
 
     <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📧</text></svg>">
 </head>
 <body>
     <div class="container">
@@ -60,7 +63,7 @@
                             <h3>Texto Direto</h3>
                         </div>
                         <div class="option-content">
-                            <textarea id="emailText" placeholder="Cole o texto do email aqui..." rows="8" aria-label="Texto do email"></textarea>
+                            <textarea id="emailText" placeholder="Cole o texto do email aqui...&#10;&#10;Dica: Use Ctrl+Enter para enviar rapidamente" rows="8" aria-label="Texto do email"></textarea>
                             <div class="example-buttons">
                                 <button type="button" class="btn-secondary" onclick="generateExampleEmail()" title="Gerar email de exemplo para teste">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px;">
@@ -148,7 +151,7 @@
                         <div class="card-header"><h3>Informações do Processamento</h3></div>
                         <div class="card-content processing-info">
                             <div class="info-item"><span class="info-label">Tempo:</span><span class="info-value" id="processingTime"></span></div>
-                            <div class="info-item"><span class="info-label">Modelo:</span><span class="info-value">BERT Multilingual</span></div>
+                            <div class="info-item"><span class="info-label">Modelo:</span><span class="info-value" id="modelUsed">—</span></div>
                             <div class="info-item"><span class="info-label">Timestamp:</span><span class="info-value" id="timestamp"></span></div>
                         </div>
                     </div>

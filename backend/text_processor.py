@@ -1,13 +1,15 @@
+# text_processor.py
 import re
 import logging
+from typing import List, Dict
 
 logger = logging.getLogger(__name__)
+
 
 class TextProcessor:
     """Processamento de texto otimizado para classificação de emails."""
 
     def __init__(self):
-        # Stopwords leves e otimizadas (não dependem do NLTK)
         self.stop_words = {
             'para','com','de','da','do','em','um','uma','os','as','ao','aos','na','nas','no','nos',
             'por','pelo','pelos','pela','pelas','esse','essa','isso','aquele','aquela','aquilo',
@@ -16,12 +18,13 @@ class TextProcessor:
             'logo','portanto','também','já','ainda','só','sempre','nunca','agora','depois','antes'
         }
 
-        # Regex comuns
-        self.email_pattern = re.compile(r'\b[\w\.-]+@[\w\.-]+\.\w+\b')
-        self.url_pattern = re.compile(r'https?://\S+')
-        self.phone_pattern = re.compile(r'\(?\d{2}\)?\s?\d{4,5}-?\d{4}')
+        self.patterns = {
+            'email': re.compile(r'\b[\w\.-]+@[\w\.-]+\.\w+\b'),
+            'url': re.compile(r'https?://\S+'),
+            'phone': re.compile(r'\(?\d{2}\)?\s?\d{4,5}-?\d{4}'),
+            'token': re.compile(r'\b[\wçáàâãéêíóôõú]+(?:-[\w]+)?\b')
+        }
 
-        # Palavras-chave com peso
         self.productive_keywords = {
             'problema': 2.0, 'erro': 2.0, 'falha': 2.0, 'defeito': 2.0,
             'suporte': 1.5, 'ajuda': 1.5, 'assistência': 1.5,
@@ -37,26 +40,16 @@ class TextProcessor:
             'feriado': 1.6, 'cumprimentos': 1.4
         }
 
-    # ----------------------------------------------------------------------
-    # PREPROCESSAMENTO
-    # ----------------------------------------------------------------------
     def preprocess(self, text: str) -> str:
         """Limpa e prepara texto para análise."""
-        if not text:
+        if not text or not isinstance(text, str):
             return ""
 
         try:
             text = self._clean_text(text)
-
-            # Tokenização simples
-            tokens = re.findall(r'\b[\wçáàâãéêíóôõú]+(?:-[\w]+)?\b', text.lower())
-
-            # Remove stopwords e tokens curtos
+            tokens = self.patterns['token'].findall(text.lower())
             tokens = [t for t in tokens if t not in self.stop_words and len(t) > 2]
-
-            # Lematização simples (plural → singular)
             tokens = [self._simple_lemmatize(t) for t in tokens]
-
             return " ".join(tokens)
         except Exception as e:
             logger.error(f"Erro no preprocessamento: {e}")
@@ -64,9 +57,9 @@ class TextProcessor:
 
     def _clean_text(self, text: str) -> str:
         """Remove emails, URLs, telefones e caracteres indesejados."""
-        text = self.email_pattern.sub("", text)
-        text = self.url_pattern.sub("", text)
-        text = self.phone_pattern.sub("", text)
+        text = self.patterns['email'].sub("", text)
+        text = self.patterns['url'].sub("", text)
+        text = self.patterns['phone'].sub("", text)
         text = re.sub(r"[^0-9A-Za-zÀ-ÖØ-öø-ÿ!?.,\s-]", " ", text)
         return re.sub(r"\s+", " ", text).strip()
 
@@ -76,11 +69,11 @@ class TextProcessor:
             return token[:-1]
         return token
 
-    # ----------------------------------------------------------------------
-    # FEATURES POR PALAVRAS-CHAVE
-    # ----------------------------------------------------------------------
-    def extract_keyword_features(self, text: str) -> dict:
+    def extract_keyword_features(self, text: str) -> Dict[str, float]:
         """Calcula scores de palavras-chave produtivas e improdutivas."""
+        if not text:
+            return {"productive_score": 0.5, "improductive_score": 0.5, "keyword_confidence": 0.05}
+
         text_lower = text.lower()
         productive_score = sum(
             len(re.findall(rf"\b{re.escape(kw)}\b", text_lower)) * weight
@@ -101,11 +94,11 @@ class TextProcessor:
             "keyword_confidence": min(total / 8, 1.0)
         }
 
-    # ----------------------------------------------------------------------
-    # DETECÇÃO DE TÓPICOS
-    # ----------------------------------------------------------------------
-    def detect_topics(self, text: str) -> list:
+    def detect_topics(self, text: str) -> List[str]:
         """Detecta tópicos relevantes no email."""
+        if not text:
+            return []
+
         text_lower = text.lower()
         topics = []
 

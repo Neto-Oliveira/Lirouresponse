@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
+# models.py
 from enum import Enum
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
 
 
 class EmailCategory(str, Enum):
@@ -9,12 +10,12 @@ class EmailCategory(str, Enum):
 
 
 class EmailRequest(BaseModel):
-    text: Optional[str] = Field(
-        None, description="Texto direto do email"
-    )
-    file_content: Optional[str] = Field(
-        None, description="Conteúdo de arquivo processado"
-    )
+    text: Optional[str] = Field(None, description="Texto direto do email")
+    file_content: Optional[str] = Field(None, description="Conteúdo de arquivo processado")
+
+    model_config = {
+        "protected_namespaces": ()
+    }
 
 
 class ClassificationResult(BaseModel):
@@ -26,7 +27,17 @@ class ClassificationResult(BaseModel):
     tokens_processed: Optional[int] = None
     detected_topics: Optional[List[str]] = None
 
-    # Remove warnings: model_used
+    model_config = {
+        "protected_namespaces": ()
+    }
+
+
+class HealthCheck(BaseModel):
+    status: str
+    timestamp: str
+    model_status: str
+    version: str
+
     model_config = {
         "protected_namespaces": ()
     }
@@ -38,14 +49,17 @@ class APIResponse(BaseModel):
     error: Optional[str] = None
     message: Optional[str] = None
 
+    model_config = {
+        "protected_namespaces": ()
+    }
 
-class HealthCheck(BaseModel):
-    status: str
-    timestamp: str
-    model_status: str
-    version: str
 
-    # Remove warnings: model_status
+class PerformanceMetrics(BaseModel):
+    total_requests: int
+    successful_classifications: int
+    average_processing_time: float
+    error_count: int
+
     model_config = {
         "protected_namespaces": ()
     }

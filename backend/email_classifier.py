@@ -6,8 +6,8 @@ import logging
 import re
 from typing import Dict, Any
 
-from .text_processor import TextProcessor
-from .models import EmailCategory
+from text_processor import TextProcessor
+from models import EmailCategory
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,7 @@ class EmailClassifier:
     def _setup_ml_models(self):
         """Carrega modelos de ML necessários."""
         try:
+            logger.info("Carregando modelo BERT para análise de sentimento...")
             self.primary_classifier = pipeline(
                 "sentiment-analysis",
                 model="nlptown/bert-base-multilingual-uncased-sentiment",
@@ -38,6 +39,7 @@ class EmailClassifier:
                 device=-1
             )
 
+            logger.info("Carregando Sentence Transformer para similaridade semântica...")
             self.sentence_model = SentenceTransformer(
                 "paraphrase-multilingual-MiniLM-L12-v2"
             )
@@ -64,6 +66,7 @@ class EmailClassifier:
                 "Cumprimentos a todos os colaboradores"
             ]
 
+            logger.info("Pré-processando referências para similaridade semântica...")
             with torch.no_grad():
                 self.prod_ref_emb = self.sentence_model.encode(
                     productive_references,
@@ -74,12 +77,12 @@ class EmailClassifier:
                     convert_to_tensor=True
                 )
 
-            logger.info("Modelos de ML carregados com sucesso.")
+            logger.info("✅ Modelos de ML carregados com sucesso.")
 
         except Exception as e:
-            logger.error(f"Erro ao carregar modelos ML: {e}")
+            logger.error(f"❌ Erro ao carregar modelos ML: {e}")
             self.use_ml_models = False
-            logger.info("Falback para modo sem ML")
+            logger.info("🔄 Fallback para modo sem ML (apenas regras)")
 
     def classify(self, text: str) -> Dict[str, Any]:
         """Classifica um email como PRODUTIVO ou IMPRODUTIVO."""
@@ -93,6 +96,7 @@ class EmailClassifier:
 
             if self.use_ml_models and self.primary_classifier:
                 # Classificação com ML
+                logger.debug("Usando modelos ML para classificação")
                 primary_result = self._primary_classification(processed_text)
                 similarity_result = self._semantic_similarity(processed_text)
                 keyword_features = self.text_processor.extract_keyword_features(text)
@@ -104,6 +108,7 @@ class EmailClassifier:
                 )
             else:
                 # Classificação baseada apenas em regras
+                logger.debug("Usando regras baseadas para classificação")
                 final_category, confidence = self._rule_based_classification(text)
 
             topics = self.text_processor.detect_topics(text)
@@ -112,7 +117,7 @@ class EmailClassifier:
                 "category": final_category,
                 "confidence": confidence,
                 "primary_model_score": confidence,
-                "similarity_score": 0.7,  # Valor padrão para compatibilidade
+                "similarity_score": 0.7,
                 "keyword_score": confidence,
                 "detected_topics": topics,
                 "tokens_processed": len(processed_text.split())
@@ -130,7 +135,6 @@ class EmailClassifier:
 
             sentiment_match = re.search(r'\d+', result["label"])
             sentiment = int(sentiment_match.group()) if sentiment_match else 3
-            prob = result.get("score", 0.5)
 
             if sentiment <= 2:
                 category = EmailCategory.PRODUTIVO
@@ -141,7 +145,8 @@ class EmailClassifier:
 
             return {"category": category, "score": float(score)}
 
-        except Exception:
+        except Exception as e:
+            logger.error(f"Erro na classificação primária: {e}")
             return {"category": EmailCategory.PRODUTIVO, "score": 0.5}
 
     def _semantic_similarity(self, text: str) -> Dict[str, Any]:
@@ -166,7 +171,8 @@ class EmailClassifier:
             else:
                 return {"category": EmailCategory.IMPRODUTIVO, "score": 1 - prod_score}
 
-        except Exception:
+        except Exception as e:
+            logger.error(f"Erro na similaridade semântica: {e}")
             return {"category": EmailCategory.PRODUTIVO, "score": 0.5}
 
     def _combine_ml_results(self, primary, sim, keywords):

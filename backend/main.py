@@ -1,3 +1,4 @@
+# main.py
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
@@ -6,38 +7,17 @@ from fastapi.staticfiles import StaticFiles
 import time
 import os
 import logging
-from typing import Optional, List
+from typing import Optional
 
-from pydantic import BaseModel, Field
-from enum import Enum
+from models import EmailRequest, ClassificationResult, HealthCheck
+from email_classifier import EmailClassifier
+from response_generator import ResponseGenerator
+from file_processor import FileProcessor
+from performance_metrics import PerformanceMetrics
 
 # Logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-# Models
-class EmailCategory(str, Enum):
-    PRODUTIVO = "PRODUTIVO"
-    IMPRODUTIVO = "IMPRODUTIVO"
-
-class EmailRequest(BaseModel):
-    text: Optional[str] = Field(None, description="Texto direto do email")
-    file_content: Optional[str] = Field(None, description="Conteúdo de arquivo processado")
-
-class ClassificationResult(BaseModel):
-    category: EmailCategory
-    confidence: float = Field(..., ge=0, le=1)
-    suggested_response: str
-    processing_time: float
-    model_used: str
-    tokens_processed: Optional[int] = None
-    detected_topics: Optional[List[str]] = None
-
-class HealthCheck(BaseModel):
-    status: str
-    timestamp: str
-    model_status: str
-    version: str
 
 # App
 app = FastAPI(
@@ -57,117 +37,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serviços
-class EmailClassifier:
-    def classify(self, text: str) -> dict:
-        """Classificação CORRIGIDA"""
-        text_lower = text.lower()
-        
-        # PALAVRAS-CHAVE MAIS EFETIVAS
-        productive_keywords = {
-            'problema', 'erro', 'suporte', 'solicitação', 'pedido', 'ajuda', 'urgente',
-            'reembolso', 'pagamento', 'transação', 'defeito', 'falha', 'não funciona',
-            'status', 'andamento', 'protocolo', 'chamado', 'suporte técnico', 'resolver',
-            'conserto', 'corrigir', 'atualização', 'login', 'senha', 'acesso', 'conta'
-        }
-        
-        improductive_keywords = {
-            'obrigado', 'agradeço', 'grato', 'parabéns', 'feliz', 'natal', 'ano novo',
-            'cumprimentos', 'saudações', 'bom dia', 'boa tarde', 'boa noite', 'felicitações',
-            'comemoração', 'festivo', 'desculpe', 'desculpa'
-        }
-        
-        # CONTAGEM MELHORADA
-        productive_count = sum(1 for word in productive_keywords if word in text_lower)
-        improductive_count = sum(1 for word in improductive_keywords if word in text_lower)
-        
-        print(f" DEBUG: Produtivas={productive_count}, Improdutivas={improductive_count}")
-        
-        # LÓGICA CORRIGIDA - Prioriza palavras produtivas
-        if productive_count > 0 and productive_count >= improductive_count:
-            category = EmailCategory.PRODUTIVO
-            confidence = min(0.95, 0.6 + productive_count * 0.1)
-        else:
-            category = EmailCategory.IMPRODUTIVO
-            confidence = min(0.95, 0.6 + improductive_count * 0.1)
-        
-        return {
-            "category": category,
-            "confidence": confidence,
-            "primary_model_score": confidence,
-            "similarity_score": 0.7,
-            "keyword_score": confidence,
-            "detected_topics": ["suporte técnico", "financeiro"] if 'reembolso' in text_lower or 'pagamento' in text_lower else ["suporte técnico"],
-            "tokens_processed": len(text.split())
-        }
-
-class ResponseGenerator:
-    def generate(self, category: EmailCategory, original_text: str, classification_data: dict = None) -> str:
-        text_lower = original_text.lower()
-        
-        if category == EmailCategory.PRODUTIVO:
-            # RESPOSTAS ESPECÍFICAS
-            if 'reembolso' in text_lower:
-                return (
-                    "Prezado(a),\n\n"
-                    "Recebemos sua solicitação de reembolso. Sua solicitação foi registrada sob o protocolo "
-                    f"REF-{int(time.time())} e será analisada por nossa equipe financeira. "
-                    "O prazo para análise é de até 5 dias úteis.\n\n"
-                    "Atenciosamente,\nEquipe Financeira"
-                )
-            elif any(word in text_lower for word in ['login', 'senha', 'acesso']):
-                return (
-                    "Prezado(a),\n\n"
-                    "Identificamos sua solicitação de acesso. Sua demanda foi registrada sob o protocolo "
-                    f"ACS-{int(time.time())} e será atendida por nossa equipe de segurança em até 24 horas.\n\n"
-                    "Atenciosamente,\nEquipe de Acesso"
-                )
-            else:
-                return (
-                    "Prezado(a),\n\n"
-                    "Agradecemos seu contato. Sua solicitação foi registrada e será analisada "
-                    "por nossa equipe especializada. Previsão de retorno: 24 horas úteis.\n\n"
-                    "Atenciosamente,\nEquipe de Suporte"
-                )
-        else:
-            return (
-                "Prezado(a),\n\n"
-                "Agradecemos profundamente sua mensagem! Ficamos muito contentes com seu contato "
-                "e desejamos um excelente dia!\n\n"
-                "Atenciosamente,\nNossa Equipe"
-            )
-
-class PerformanceMetrics:
-    def __init__(self):
-        self.metrics = {
-            "total_requests": 0,
-            "successful_classifications": 0,
-            "average_processing_time": 0.0,
-            "error_count": 0
-        }
-
-    def record_request(self, processing_time: float, success: bool = True):
-        self.metrics["total_requests"] += 1
-        if success:
-            self.metrics["successful_classifications"] += 1
-            total = self.metrics["successful_classifications"]
-            current_avg = self.metrics["average_processing_time"]
-            self.metrics["average_processing_time"] = (
-                (current_avg * (total - 1) + processing_time) / total
-            )
-        else:
-            self.metrics["error_count"] += 1
-
-    def get_metrics(self) -> dict:
-        return self.metrics.copy()
-
 # Instâncias globais
-classifier = EmailClassifier()
+logger.info("🚀 Inicializando Email Classifier...")
+classifier = EmailClassifier(use_ml_models=True)
 response_generator = ResponseGenerator()
+file_processor = FileProcessor()
 performance_metrics = PerformanceMetrics()
+logger.info("✅ Serviços inicializados com sucesso!")
 
 # Static files
-import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
 FRONTEND_DIR = os.path.join(PROJECT_ROOT, "frontend")
@@ -195,7 +73,7 @@ async def health_check():
     return HealthCheck(
         status="healthy",
         timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
-        model_status="loaded",
+        model_status="loaded" if classifier.use_ml_models else "rule_based",
         version="2.0.0"
     )
 
@@ -205,7 +83,7 @@ async def get_metrics():
 
 @app.post("/classify", response_model=ClassificationResult)
 async def classify_email(request: EmailRequest):
-    start = time.time()
+    start_time = time.time()
 
     try:
         email_text = (request.text or request.file_content or "").strip()
@@ -216,58 +94,51 @@ async def classify_email(request: EmailRequest):
         if len(email_text) > 10_000:
             raise HTTPException(status_code=400, detail="Texto muito longo. Máximo: 10.000 caracteres.")
 
+        logger.info(f"📧 Classificando email com {len(email_text)} caracteres...")
+
         # Classificação
-        result = classifier.classify(email_text)
+        classification_result = classifier.classify(email_text)
         
         # Geração de resposta
-        suggested = response_generator.generate(
-            result["category"],
+        suggested_response = response_generator.generate(
+            classification_result["category"],
             email_text,
-            result
+            classification_result
         )
 
-        process_time = round(time.time() - start, 2)
-        performance_metrics.record_request(process_time, True)
+        processing_time = round(time.time() - start_time, 2)
+        performance_metrics.record_request(processing_time, True)
+
+        logger.info(f"✅ Classificação concluída: {classification_result['category']} (confiança: {classification_result['confidence']:.2f})")
 
         return ClassificationResult(
-            category=result["category"],
-            confidence=result["confidence"],
-            suggested_response=suggested,
-            processing_time=process_time,  # AGORA SEMPRE RETORNA O TEMPO
-            model_used="BERT Multilingual + Semantic Similarity",
-            tokens_processed=result.get("tokens_processed"),
-            detected_topics=result.get("detected_topics", [])
+            category=classification_result["category"],
+            confidence=classification_result["confidence"],
+            suggested_response=suggested_response,
+            processing_time=processing_time,
+            model_used="BERT + Semantic Similarity" if classifier.use_ml_models else "Rule-Based",
+            tokens_processed=classification_result.get("tokens_processed"),
+            detected_topics=classification_result.get("detected_topics", [])
         )
 
     except HTTPException:
-        performance_metrics.record_request(time.time() - start, False)
+        processing_time = round(time.time() - start_time, 2)
+        performance_metrics.record_request(processing_time, False)
         raise
     except Exception as e:
-        logger.error(f"Erro na classificação: {e}")
-        performance_metrics.record_request(time.time() - start, False)
+        logger.error(f"❌ Erro na classificação: {e}")
+        processing_time = round(time.time() - start_time, 2)
+        performance_metrics.record_request(processing_time, False)
         raise HTTPException(status_code=500, detail="Erro interno ao classificar o email.")
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     try:
-        if not file.filename:
-            raise HTTPException(400, "Nome do arquivo não fornecido")
+        logger.info(f"📁 Processando arquivo: {file.filename}")
+        text = await file_processor.process_uploaded_file(file)
         
-        content = await file.read()
+        logger.info(f"✅ Arquivo processado com sucesso: {len(text)} caracteres extraídos")
         
-        if file.filename.lower().endswith('.txt'):
-            try:
-                text = content.decode('utf-8')
-            except UnicodeDecodeError:
-                raise HTTPException(400, "Erro ao decodificar arquivo. Use UTF-8.")
-        elif file.filename.lower().endswith('.pdf'):
-            text = "[Conteúdo PDF] Para análise completa, use a rota de classificação com upload."
-        else:
-            raise HTTPException(400, "Tipo de arquivo não suportado. Use .txt ou .pdf")
-
-        if not text.strip():
-            raise HTTPException(400, "Arquivo vazio ou sem texto legível")
-
         return {
             "status": "success",
             "filename": file.filename,
@@ -278,7 +149,7 @@ async def upload_file(file: UploadFile = File(...)):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Erro ao processar arquivo: {str(e)}")
+        logger.error(f"❌ Erro ao processar arquivo: {str(e)}")
         raise HTTPException(500, f"Erro ao processar arquivo: {str(e)}")
 
 @app.exception_handler(HTTPException)
@@ -294,7 +165,7 @@ async def http_exception_handler(request, exc):
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request, exc):
-    logger.error(f"Erro não tratado: {exc}")
+    logger.error(f"❌ Erro não tratado: {exc}")
     return JSONResponse(
         status_code=500,
         content={
@@ -306,10 +177,13 @@ async def general_exception_handler(request, exc):
 
 if __name__ == "__main__":
     import uvicorn
+    logger.info("🎯 Iniciando servidor FastAPI na porta 8000...")
+    
+    # REMOVIDO o reload para funcionar com python main.py
     uvicorn.run(
-        "main:app",
+        app,  # Agora passa o app diretamente, não como string
         host="0.0.0.0",
         port=8000,
-        reload=True,
-        log_level="info",
+        log_level="info"
+        # reload removido
     )
