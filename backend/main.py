@@ -81,7 +81,7 @@ class EmailClassifier:
         productive_count = sum(1 for word in productive_keywords if word in text_lower)
         improductive_count = sum(1 for word in improductive_keywords if word in text_lower)
         
-        print(f"🔍 DEBUG: Produtivas={productive_count}, Improdutivas={improductive_count}")  # DEBUG
+        print(f" DEBUG: Produtivas={productive_count}, Improdutivas={improductive_count}")
         
         # LÓGICA CORRIGIDA - Prioriza palavras produtivas
         if productive_count > 0 and productive_count >= improductive_count:
@@ -103,13 +103,32 @@ class EmailClassifier:
 
 class ResponseGenerator:
     def generate(self, category: EmailCategory, original_text: str, classification_data: dict = None) -> str:
+        text_lower = original_text.lower()
+        
         if category == EmailCategory.PRODUTIVO:
-            return (
-                "Prezado(a),\n\n"
-                "Agradecemos seu contato. Sua solicitação foi registrada e será analisada "
-                "por nossa equipe especializada. Previsão de retorno: 24 horas úteis.\n\n"
-                "Atenciosamente,\nEquipe de Suporte"
-            )
+            # RESPOSTAS ESPECÍFICAS
+            if 'reembolso' in text_lower:
+                return (
+                    "Prezado(a),\n\n"
+                    "Recebemos sua solicitação de reembolso. Sua solicitação foi registrada sob o protocolo "
+                    f"REF-{int(time.time())} e será analisada por nossa equipe financeira. "
+                    "O prazo para análise é de até 5 dias úteis.\n\n"
+                    "Atenciosamente,\nEquipe Financeira"
+                )
+            elif any(word in text_lower for word in ['login', 'senha', 'acesso']):
+                return (
+                    "Prezado(a),\n\n"
+                    "Identificamos sua solicitação de acesso. Sua demanda foi registrada sob o protocolo "
+                    f"ACS-{int(time.time())} e será atendida por nossa equipe de segurança em até 24 horas.\n\n"
+                    "Atenciosamente,\nEquipe de Acesso"
+                )
+            else:
+                return (
+                    "Prezado(a),\n\n"
+                    "Agradecemos seu contato. Sua solicitação foi registrada e será analisada "
+                    "por nossa equipe especializada. Previsão de retorno: 24 horas úteis.\n\n"
+                    "Atenciosamente,\nEquipe de Suporte"
+                )
         else:
             return (
                 "Prezado(a),\n\n"
@@ -147,32 +166,28 @@ classifier = EmailClassifier()
 response_generator = ResponseGenerator()
 performance_metrics = PerformanceMetrics()
 
-# Static files - CAMINHO CORRIGIDO PARA email-classifier-premium\frontend
+# Static files
 import os
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Pasta atual do main.py
-PROJECT_ROOT = os.path.dirname(BASE_DIR)  # Volta para email-classifier-premium
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(BASE_DIR)
 FRONTEND_DIR = os.path.join(PROJECT_ROOT, "frontend")
 
 print(f"📍 Pasta do main.py: {BASE_DIR}")
 print(f"📍 Pasta raiz do projeto: {PROJECT_ROOT}")
 print(f"📍 Pasta do frontend: {FRONTEND_DIR}")
 
-# Verifica se o frontend existe
 if os.path.exists(FRONTEND_DIR):
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
     print("✅ Frontend configurado com sucesso!")
     print(f"📁 Arquivos no frontend: {os.listdir(FRONTEND_DIR)}")
 else:
     print(f"❌ Frontend não encontrado em: {FRONTEND_DIR}")
-    print(f"📁 Pastas disponíveis: {os.listdir(PROJECT_ROOT)}")
 
 @app.get("/", include_in_schema=False)
 async def serve_frontend():
     index_path = os.path.join(FRONTEND_DIR, "index.html")
     if os.path.exists(index_path):
-        print("✅ Index.html encontrado! Servindo frontend...")
         return FileResponse(index_path)
-    print(f"❌ Index.html não encontrado em: {index_path}")
     return {"message": "Frontend não encontrado. Acesse /docs para a API."}
 
 @app.get("/health", response_model=HealthCheck)
@@ -218,7 +233,7 @@ async def classify_email(request: EmailRequest):
             category=result["category"],
             confidence=result["confidence"],
             suggested_response=suggested,
-            processing_time=process_time,
+            processing_time=process_time,  # AGORA SEMPRE RETORNA O TEMPO
             model_used="BERT Multilingual + Semantic Similarity",
             tokens_processed=result.get("tokens_processed"),
             detected_topics=result.get("detected_topics", [])
@@ -238,16 +253,13 @@ async def upload_file(file: UploadFile = File(...)):
         if not file.filename:
             raise HTTPException(400, "Nome do arquivo não fornecido")
         
-        # Lê o conteúdo do arquivo
         content = await file.read()
         
-        # Para arquivos de texto
         if file.filename.lower().endswith('.txt'):
             try:
                 text = content.decode('utf-8')
             except UnicodeDecodeError:
                 raise HTTPException(400, "Erro ao decodificar arquivo. Use UTF-8.")
-        # Para PDFs - retorna placeholder
         elif file.filename.lower().endswith('.pdf'):
             text = "[Conteúdo PDF] Para análise completa, use a rota de classificação com upload."
         else:
