@@ -1,81 +1,90 @@
-# main.py
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-
+from fastapi.responses import JSONResponse
 import time
 import os
 import logging
 from typing import Optional
 
-from models import EmailRequest, ClassificationResult, HealthCheck
+# Import dos seus módulos existentes
 from email_classifier import EmailClassifier
 from response_generator import ResponseGenerator
 from file_processor import FileProcessor
 from performance_metrics import PerformanceMetrics
+from models import EmailRequest, ClassificationResult, HealthCheck
 
-# Logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Configuração de logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
-# App
+# App FastAPI
 app = FastAPI(
-    title="Email Classifier API",
-    description="API inteligente para classificação de emails",
-    version="2.0.0",
+    title="Email Classifier API - Premium Optimized",
+    description="API inteligente e otimizada para classificação de emails",
+    version="2.1.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
 
-# CORS
+# CORS para frontend no Vercel
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000", 
+        "https://*.vercel.app",
+        "*"  # Em produção, substitua pelo seu domínio específico
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Instâncias globais
-logger.info("🚀 Inicializando Email Classifier...")
-classifier = EmailClassifier(use_ml_models=True)
-response_generator = ResponseGenerator()
-file_processor = FileProcessor()
-performance_metrics = PerformanceMetrics()
-logger.info("✅ Serviços inicializados com sucesso!")
+logger.info("🚀 Inicializando Email Classifier Premium...")
 
-# Static files
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(BASE_DIR)
-FRONTEND_DIR = os.path.join(PROJECT_ROOT, "frontend")
+try:
+    use_ml = os.getenv("USE_ML_MODELS", "true").lower() == "true"
+    classifier = EmailClassifier(use_ml_models=use_ml)
+    response_generator = ResponseGenerator()
+    file_processor = FileProcessor()
+    performance_metrics = PerformanceMetrics()
+    
+    logger.info(f"✅ Serviços inicializados! ML: {classifier.use_ml_models}")
+    
+except Exception as e:
+    logger.error(f"❌ Erro na inicialização: {e}")
+    raise
 
-print(f"📍 Pasta do main.py: {BASE_DIR}")
-print(f"📍 Pasta raiz do projeto: {PROJECT_ROOT}")
-print(f"📍 Pasta do frontend: {FRONTEND_DIR}")
-
-if os.path.exists(FRONTEND_DIR):
-    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
-    print("✅ Frontend configurado com sucesso!")
-    print(f"📁 Arquivos no frontend: {os.listdir(FRONTEND_DIR)}")
-else:
-    print(f"❌ Frontend não encontrado em: {FRONTEND_DIR}")
-
-@app.get("/", include_in_schema=False)
-async def serve_frontend():
-    index_path = os.path.join(FRONTEND_DIR, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return {"message": "Frontend não encontrado. Acesse /docs para a API."}
+@app.get("/")
+async def root():
+    return {
+        "message": "Email Classifier API - Premium Optimized",
+        "version": "2.1.0",
+        "status": "online",
+        "docs": "/docs"
+    }
 
 @app.get("/health", response_model=HealthCheck)
 async def health_check():
     return HealthCheck(
         status="healthy",
         timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
-        model_status="loaded" if classifier.use_ml_models else "rule_based",
-        version="2.0.0"
+        model_status="ml_loaded" if classifier.use_ml_models else "rule_based",
+        version="2.1.0"
     )
+
+@app.get("/model-status")
+async def model_status():
+    return {
+        "ml_models_loaded": classifier.use_ml_models,
+        "using_ml": classifier.use_ml_models,
+        "memory_optimized": True,
+        "environment": os.getenv("ENVIRONMENT", "production")
+    }
 
 @app.get("/metrics")
 async def get_metrics():
@@ -89,69 +98,90 @@ async def classify_email(request: EmailRequest):
         email_text = (request.text or request.file_content or "").strip()
 
         if not email_text:
-            raise HTTPException(status_code=400, detail="Texto do email é obrigatório.")
+            raise HTTPException(status_code=400, detail="Texto do email é obrigatório")
 
         if len(email_text) > 10_000:
-            raise HTTPException(status_code=400, detail="Texto muito longo. Máximo: 10.000 caracteres.")
+            raise HTTPException(status_code=400, detail="Texto muito longo. Máximo: 10.000 caracteres")
 
-        logger.info(f"📧 Classificando email com {len(email_text)} caracteres...")
+        logger.info(f"📧 Classificando email com {len(email_text)} caracteres")
 
         # Classificação
         classification_result = classifier.classify(email_text)
         
-        # Geração de resposta
+        # Resposta sugerida
         suggested_response = response_generator.generate(
             classification_result["category"],
             email_text,
             classification_result
         )
 
-        processing_time = round(time.time() - start_time, 2)
+        processing_time = round(time.time() - start_time, 3)
         performance_metrics.record_request(processing_time, True)
 
-        logger.info(f"✅ Classificação concluída: {classification_result['category']} (confiança: {classification_result['confidence']:.2f})")
+        logger.info(f"✅ Classificação: {classification_result['category']} (conf: {classification_result['confidence']:.2f})")
 
         return ClassificationResult(
             category=classification_result["category"],
             confidence=classification_result["confidence"],
             suggested_response=suggested_response,
             processing_time=processing_time,
-            model_used="BERT + Semantic Similarity" if classifier.use_ml_models else "Rule-Based",
-            tokens_processed=classification_result.get("tokens_processed"),
+            model_used="BERT + Semantic" if classifier.use_ml_models else "Rule-Based",
+            tokens_processed=classification_result.get("tokens_processed", 0),
             detected_topics=classification_result.get("detected_topics", [])
         )
 
     except HTTPException:
-        processing_time = round(time.time() - start_time, 2)
+        processing_time = round(time.time() - start_time, 3)
         performance_metrics.record_request(processing_time, False)
         raise
     except Exception as e:
         logger.error(f"❌ Erro na classificação: {e}")
-        processing_time = round(time.time() - start_time, 2)
+        processing_time = round(time.time() - start_time, 3)
         performance_metrics.record_request(processing_time, False)
-        raise HTTPException(status_code=500, detail="Erro interno ao classificar o email.")
+        raise HTTPException(status_code=500, detail="Erro interno ao classificar o email")
+
+@app.post("/classify/file")
+async def classify_email_file(file: UploadFile = File(...)):
+    start_time = time.time()
+
+    try:
+        logger.info(f"📁 Processando arquivo: {file.filename}")
+        text_content = await file_processor.process_uploaded_file(file)
+        logger.info(f"✅ Arquivo processado: {len(text_content)} caracteres")
+
+        request = EmailRequest(text=text_content)
+        return await classify_email(request)
+
+    except HTTPException:
+        processing_time = round(time.time() - start_time, 3)
+        performance_metrics.record_request(processing_time, False)
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erro ao processar arquivo: {str(e)}")
+        processing_time = round(time.time() - start_time, 3)
+        performance_metrics.record_request(processing_time, False)
+        raise HTTPException(status_code=500, detail=f"Erro ao processar arquivo: {str(e)}")
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     try:
-        logger.info(f"📁 Processando arquivo: {file.filename}")
-        text = await file_processor.process_uploaded_file(file)
-        
-        logger.info(f"✅ Arquivo processado com sucesso: {len(text)} caracteres extraídos")
+        logger.info(f"📤 Upload: {file.filename}")
+        text_content = await file_processor.process_uploaded_file(file)
         
         return {
             "status": "success",
             "filename": file.filename,
-            "text": text,
-            "text_length": len(text)
+            "text_length": len(text_content),
+            "message": "Arquivo processado com sucesso"
         }
     
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ Erro ao processar arquivo: {str(e)}")
-        raise HTTPException(500, f"Erro ao processar arquivo: {str(e)}")
+        logger.error(f"❌ Erro no upload: {str(e)}")
+        raise HTTPException(500, f"Erro no processamento: {str(e)}")
 
+# Error handlers
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
     return JSONResponse(
@@ -177,13 +207,11 @@ async def general_exception_handler(request, exc):
 
 if __name__ == "__main__":
     import uvicorn
-    logger.info("🎯 Iniciando servidor FastAPI na porta 8000...")
+    logger.info("🎯 Iniciando servidor na porta 8000...")
     
-    # REMOVIDO o reload para funcionar com python main.py
     uvicorn.run(
-        app,  # Agora passa o app diretamente, não como string
+        app,
         host="0.0.0.0",
         port=8000,
         log_level="info"
-        # reload removido
     )

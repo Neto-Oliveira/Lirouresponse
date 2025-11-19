@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  email-classifier-api:
+    build: .
+    container_name: email-classifier-api
+    ports:
+      - "8001:8000"    # ✅ EXTERNO:8001 → INTERNO:8000
+    environment:
+      - USE_ML_MODELS=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]  # ✅ INTERNO é 8000
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped

@@ -1,23 +1,26 @@
-﻿{
+{
   "version": 2,
   "builds": [
     {
-      "src": "**/*.html",
+      "src": "*.html",
       "use": "@vercel/static"
     },
     {
-      "src": "css/**/*",
+      "src": "css/*",
       "use": "@vercel/static"
     },
     {
-      "src": "js/**/*",
+      "src": "js/*",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/$1"
+      "dest": "/index.html"
     }
-  ]
+  ],
+  "env": {
+    "BACKEND_URL": "https://seu-backend.onrender.com"
+  }
 }

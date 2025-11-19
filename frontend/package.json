@@ -1,8 +1,0 @@
-﻿{
-  "name": "email-classifier-frontend",
-  "version": "1.0.0",
-  "scripts": {
-    "dev": "echo 'No dev server needed'",
-    "build": "echo 'No build step needed'"
-  }
-}

@@ -1,8 +1,9 @@
-// frontend/js/app.js
+// EmailClassifierApp - Versão Otimizada para Vercel + Backend Remoto
 class EmailClassifierApp {
     constructor() {
         this.currentFile = null;
         this.isProcessing = false;
+        this.backendAvailable = false;
         this.init();
     }
 
@@ -113,32 +114,87 @@ class EmailClassifierApp {
 
     async checkBackendStatus() {
         try {
-            const response = await fetch('/health', {
+            const response = await fetch(CONFIG.getApiUrl('health'), {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json'
                 },
-                timeout: 5000
+                timeout: 10000 // 10 segundos
             });
             
             if (response.ok) {
                 const data = await response.json();
+                this.backendAvailable = true;
                 console.log('✅ Backend conectado:', data);
+                this.updateBackendStatus(true);
             } else {
                 console.warn('⚠️ Backend com status não ideal');
+                this.updateBackendStatus(false);
             }
         } catch (error) {
             console.error('❌ Backend não disponível:', error);
-            // COMENTADO: this.showNotification('Backend não está disponível. Verifique se o servidor está rodando.', 'error');
+            this.updateBackendStatus(false);
         }
+    }
+
+    updateBackendStatus(available) {
+        this.backendAvailable = available;
+        const statusIndicator = document.getElementById('backendStatus') || this.createStatusIndicator();
+        
+        if (available) {
+            statusIndicator.className = 'backend-status connected';
+            statusIndicator.innerHTML = '✅ Backend Online';
+        } else {
+            statusIndicator.className = 'backend-status disconnected';
+            statusIndicator.innerHTML = '❌ Backend Offline';
+        }
+    }
+
+    createStatusIndicator() {
+        const header = document.querySelector('.header');
+        const statusDiv = document.createElement('div');
+        statusDiv.id = 'backendStatus';
+        statusDiv.className = 'backend-status';
+        statusDiv.style.cssText = `
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-left: 10px;
+        `;
+        header.appendChild(statusDiv);
+        return statusDiv;
     }
 
     // Manipulação de arquivos
     async extractTextFromFile(file) {
         if (file.type === 'application/pdf') {
-            return "[Conteúdo PDF] Arquivo carregado com sucesso. Clique em 'Analisar Email' para processar.";
+            // Para PDF, faz upload e extração no backend
+            return await this.uploadAndExtractFile(file);
         } else {
             return await this.readAsText(file);
+        }
+    }
+
+    async uploadAndExtractFile(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch(CONFIG.getApiUrl('upload'), {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`Erro no upload: ${response.status}`);
+            }
+
+            const result = await response.json();
+            return result.text || "Conteúdo extraído com sucesso. Clique em 'Analisar Email'.";
+            
+        } catch (error) {
+            console.error('Erro no upload:', error);
+            return await this.readAsText(file); // Fallback para leitura local
         }
     }
 
@@ -156,7 +212,7 @@ class EmailClassifierApp {
     validateFile(file) {
         const allowedTypes = ['text/plain', 'application/pdf'];
         const allowedExtensions = ['.txt', '.pdf'];
-        const maxSize = 5 * 1024 * 1024;
+        const maxSize = CONFIG.maxFileSize;
 
         const hasValidType = allowedTypes.includes(file.type);
         const hasValidExtension = allowedExtensions.some(ext => 
@@ -179,7 +235,7 @@ class EmailClassifierApp {
         try {
             this.validateFile(file);
         } catch (err) {
-            // COMENTADO: this.showNotification(err.message || 'Arquivo inválido', 'error');
+            this.showNotification(err.message || 'Arquivo inválido', 'error');
             return;
         }
 
@@ -215,6 +271,11 @@ class EmailClassifierApp {
     async processEmail() {
         if (this.isProcessing) return;
 
+        if (!this.backendAvailable) {
+            this.showNotification('Backend não disponível. Verifique a conexão.', 'error');
+            return;
+        }
+
         const activeOption = document.querySelector('.input-option.active');
         const optionType = activeOption?.dataset.option;
         let emailContent = '';
@@ -224,21 +285,21 @@ class EmailClassifierApp {
             emailContent = document.getElementById('emailText').value.trim();
         } else if (optionType === 'file' && this.currentFile) {
             try {
-                // COMENTADO: this.showNotification('📁 Lendo arquivo...', 'info');
+                this.showNotification('📁 Processando arquivo...', 'info');
                 emailContent = await this.extractTextFromFile(this.currentFile);
             } catch (err) {
-                // COMENTADO: this.showNotification('Erro ao ler arquivo: ' + err.message, 'error');
+                this.showNotification('Erro ao processar arquivo: ' + err.message, 'error');
                 return;
             }
         }
 
         if (!emailContent) {
-            // COMENTADO: this.showNotification('Por favor, insira o conteúdo do email ou selecione um arquivo.', 'warning');
+            this.showNotification('Por favor, insira o conteúdo do email ou selecione um arquivo.', 'warning');
             return;
         }
 
         if (emailContent.length > 10000) {
-            // COMENTADO: this.showNotification('Texto muito longo. Máximo: 10.000 caracteres.', 'warning');
+            this.showNotification('Texto muito longo. Máximo: 10.000 caracteres.', 'warning');
             return;
         }
 
@@ -247,28 +308,29 @@ class EmailClassifierApp {
 
         try {
             const payload = { text: emailContent };
-            const response = await fetch('/classify', {
+            const response = await fetch(CONFIG.getApiUrl('classify'), {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
+                signal: AbortSignal.timeout(CONFIG.timeout)
             });
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => null);
-                const msg = errorData?.detail || `Erro HTTP ${response.status}`;
+                const msg = errorData?.detail || errorData?.error || `Erro HTTP ${response.status}`;
                 throw new Error(msg);
             }
 
             const data = await response.json();
             this.displayResults(data);
-            // COMENTADO: this.showNotification('✅ Email analisado com sucesso!', 'success');
+            this.showNotification('✅ Email analisado com sucesso!', 'success');
 
         } catch (err) {
             console.error('Erro no processamento:', err);
-            // COMENTADO: this.showNotification('❌ Erro ao processar email: ' + (err.message || err), 'error');
+            this.showNotification('❌ Erro ao processar email: ' + (err.message || err), 'error');
         } finally {
             this.showLoading(false);
             this.isProcessing = false;
@@ -341,20 +403,20 @@ class EmailClassifierApp {
         }
     }
 
-   removeFile() {
-    const fileInfo = document.getElementById('fileInfo');
-    const uploadArea = document.getElementById('fileUploadArea');
-    const fileInput = document.getElementById('fileInput');
+    removeFile() {
+        const fileInfo = document.getElementById('fileInfo');
+        const uploadArea = document.getElementById('fileUploadArea');
+        const fileInput = document.getElementById('fileInput');
 
-    fileInfo.style.display = 'none';
-    uploadArea.style.display = 'block';
-    fileInput.value = '';
-    this.currentFile = null;
+        fileInfo.style.display = 'none';
+        uploadArea.style.display = 'block';
+        fileInput.value = '';
+        this.currentFile = null;
 
-    document.querySelectorAll('.input-option').forEach(opt => opt.classList.remove('active'));
-    document.querySelector('[data-option="text"]').classList.add('active');
+        document.querySelectorAll('.input-option').forEach(opt => opt.classList.remove('active'));
+        document.querySelector('[data-option="text"]').classList.add('active');
 
-    // COMENTADO: this.showNotification('📁 Arquivo removido', 'info');
+        this.showNotification('📁 Arquivo removido', 'info');
     }
 
     clearForm() {
@@ -368,19 +430,19 @@ class EmailClassifierApp {
         document.getElementById('statAccuracy').textContent = '—';
         document.getElementById('statTime').textContent = '—';
 
-        // COMENTADO: this.showNotification('🧹 Formulário limpo', 'info');
+        this.showNotification('🧹 Formulário limpo', 'info');
     }
 
     async copyResponse() {
         const responseText = document.getElementById('responseText').textContent || '';
         if (!responseText || responseText === '—') {
-            // COMENTADO: this.showNotification('Nenhuma resposta para copiar', 'warning');
+            this.showNotification('Nenhuma resposta para copiar', 'warning');
             return;
         }
 
         try {
             await navigator.clipboard.writeText(responseText);
-            // COMENTADO: this.showNotification('📋 Resposta copiada!', 'success');
+            this.showNotification('📋 Resposta copiada!', 'success');
         } catch (err) {
             // Fallback para navegadores antigos
             const textArea = document.createElement('textarea');
@@ -389,12 +451,10 @@ class EmailClassifierApp {
             textArea.select();
             document.execCommand('copy');
             document.body.removeChild(textArea);
-            // COMENTADO: this.showNotification('📋 Resposta copiada!', 'success');
+            this.showNotification('📋 Resposta copiada!', 'success');
         }
     }
 
-    // COMENTADO: Método de notificação removido
-    /*
     showNotification(message, type = 'info') {
         // Remover notificações existentes
         const existingNotifications = document.querySelectorAll('.notification');
@@ -447,7 +507,6 @@ class EmailClassifierApp {
             }
         }, 5000);
     }
-    */
 
     generateExampleEmail() {
         const categories = ['productive', 'improductive', 'borderline'];
@@ -461,7 +520,7 @@ class EmailClassifierApp {
         
         this.autoResizeTextarea({ target: textarea });
         
-        // COMENTADO: this.showNotification(`📧 Exemplo carregado: ${randomEmail.description}`, 'info');
+        this.showNotification(`📧 Exemplo carregado: ${randomEmail.description}`, 'info');
         
         document.querySelectorAll('.input-option').forEach(opt => opt.classList.remove('active'));
         document.querySelector('[data-option="text"]').classList.add('active');
@@ -484,21 +543,6 @@ class EmailClassifierApp {
                 text: "Preciso de ajuda com um erro 500 no sistema. Quando tento fazer login, recebo mensagem de 'serviço indisponível'. Podem verificar?",
                 category: "PRODUTIVO",
                 description: "🔧 Problema técnico"
-            },
-            {
-                text: "Esqueci minha senha de acesso e não consigo entrar na minha conta. Podem me ajudar a redefinir?",
-                category: "PRODUTIVO",
-                description: "🔐 Problema de acesso"
-            },
-            {
-                text: "Qual o status do meu pedido #7890? Fiz a compra há 5 dias e ainda não recebi confirmação de envio.",
-                category: "PRODUTIVO",
-                description: "📋 Consulta de status"
-            },
-            {
-                text: "Estou com problemas para fazer upload de arquivos PDF no sistema. Recebo erro 'tamanho máximo excedido' mesmo com arquivos pequenos.",
-                category: "PRODUTIVO",
-                description: "📎 Problema com upload"
             }
         ],
         improductive: [
@@ -511,38 +555,6 @@ class EmailClassifierApp {
                 text: "Desejo um feliz natal e um próspero ano novo para toda a equipe! Muito sucesso em 2024!",
                 category: "IMPRODUTIVO",
                 description: "🎄 Cumprimentos festivos"
-            },
-            {
-                text: "Bom dia equipe! Só passando para desejar um ótimo final de semana a todos.",
-                category: "IMPRODUTIVO", 
-                description: "👋 Saudação"
-            },
-            {
-                text: "Parabéns pelo aniversário da empresa! Desejo muitos anos de sucesso e crescimento.",
-                category: "IMPRODUTIVO",
-                description: "🎂 Parabéns"
-            },
-            {
-                text: "Gostaria de agradecer a todos pelo suporte técnico excepcional. Ficamos muito satisfeitos com o serviço!",
-                category: "IMPRODUTIVO",
-                description: "⭐ Agradecimento elogioso"
-            }
-        ],
-        borderline: [
-            {
-                text: "Primeiro gostaria de agradecer pelo atendimento anterior que foi excelente. Agora estou com outro problema: não consigo fazer upload de arquivos PDF no sistema.",
-                category: "PRODUTIVO",
-                description: "🔄 Misto: Agradecimento + Problema"
-            },
-            {
-                text: "Prezados, venho por meio deste solicitar informações sobre o status de minha solicitação de suporte técnico registrada sob o protocolo ST-456.",
-                category: "PRODUTIVO", 
-                description: "📝 Formal corporativo"
-            },
-            {
-                text: "EMERGÊNCIA: Servidor de produção apresentando falhas críticas. Necessário suporte URGENTE da equipe técnica.",
-                category: "PRODUTIVO",
-                description: "⚡ Emergência explícita"
             }
         ]
     };
