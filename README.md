@@ -1,19 +1,51 @@
-# 📧 Email Classifier AI
+📧 Lirou Analytics - Classificador de Emails
+Classificação inteligente de emails com IA para identificar mensagens produtivas vs improdutivas.
 
-Sistema inteligente para classificação automática de emails em categorias produtivas e improdutivas, com geração de respostas automáticas.
+🚀 Como Executar
+Backend (FastAPI)
+bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+Disponível em: http://localhost:8001
 
-## 🚀 Funcionalidades
+Frontend (Vercel)
+bash
+cd frontend
+python -m http.server 3000
+Disponível em: http://localhost:3000
 
-- **Classificação Automática**: Identifica emails como PRODUTIVO ou IMPRODUTIVO
-- **Geração de Respostas**: Sugere respostas contextualizadas
-- **Upload de Arquivos**: Suporte a arquivos TXT e PDF
-- **Interface Moderna**: Frontend responsivo e intuitivo
-- **API RESTful**: Backend FastAPI com documentação interativa
-- **Métricas**: Monitoramento de performance em tempo real
+🌐 Deploy
+Frontend (Vercel)
+Conecte o repositório no Vercel
 
-## 🛠️ Tecnologias
+Deploy automático a cada push
 
-- **Backend**: FastAPI, Python, Transformers, PyTorch
-- **Frontend**: HTML5, CSS3, JavaScript vanilla
-- **ML Models**: BERT Multilingual, Sentence Transformers
-- **Deploy**: Docker, Uvicorn
+Backend (VPS)
+bash
+uvicorn main:app --host 0.0.0.0 --port 8001
+📁 Estrutura
+text
+lirou-analytics/
+├── frontend/           # Interface web (HTML/CSS/JS)
+├── backend/           # API FastAPI + ML
+└── README.md
+⚙️ Configuração DNS
+text
+A       @       76.76.21.21          (Vercel)
+CNAME   www     cname.vercel-dns.com (Vercel)  
+A       api     SEU_IP_VPS           (Backend)
+🎯 Funcionalidades
+✅ Classificação automática de emails
+
+✅ Upload de arquivos (.txt, .pdf)
+
+✅ Respostas sugeridas por IA
+
+✅ Interface responsiva
+
+✅ Métricas em tempo real
+
+Acesse: https://lirouanalytics.site
+
+Desenvolvido com FastAPI + JavaScript + Vercel
