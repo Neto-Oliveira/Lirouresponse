@@ -21,22 +21,22 @@ class Config {
     getBackendUrls() {
         if (this.environment === 'development') {
             return {
-                base: 'http://localhost:8001',  // ✅ MUDAR para 8001
+                base: 'http://localhost:8001',
                 classify: 'http://localhost:8001/classify',
                 classifyFile: 'http://localhost:8001/classify/file',
-                upload: 'http://localhost:8001/upload',
+                upload: 'http://localhost:8001/upload', 
                 health: 'http://localhost:8001/health',
                 modelStatus: 'http://localhost:8001/model-status'
             };
         } else {
-            // SUBSTITUA pela URL real do seu backend em produção
+            // ✅ SUBSTITUIR pela SUA VPS
             return {
-                base: 'https://seu-backend.onrender.com', // ou sua VPS
-                classify: 'https://seu-backend.onrender.com/classify',
-                classifyFile: 'https://seu-backend.onrender.com/classify/file',
-                upload: 'https://seu-backend.onrender.com/upload',
-                health: 'https://seu-backend.onrender.com/health',
-                modelStatus: 'https://seu-backend.onrender.com/model-status'
+                base: 'http://18.219.41.143:8001',
+                classify: 'http://18.219.41.143:8001/classify',
+                classifyFile: 'http://18.219.41.143:8001/classify/file',
+                upload: 'http://18.219.41.143:8001/upload',
+                health: 'http://18.219.41.143:8001/health',
+                modelStatus: 'http://18.219.41.143:8001/model-status'
             };
         }
     }
