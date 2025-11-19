@@ -2,6 +2,7 @@
 Classificação inteligente de emails com IA para identificar mensagens produtivas vs improdutivas.
 
 🚀 Como Executar
+
 Backend (FastAPI)
 bash
 cd backend
@@ -30,6 +31,7 @@ lirou-analytics/
 ├── frontend/           # Interface web (HTML/CSS/JS)
 ├── backend/           # API FastAPI + ML
 └── README.md
+
 ⚙️ Configuração DNS
 text
 A       @       76.76.21.21          (Vercel)
@@ -43,8 +45,6 @@ A       api     SEU_IP_VPS           (Backend)
 ✅ Respostas sugeridas por IA
 
 ✅ Interface responsiva
-
-✅ Métricas em tempo real
 
 Acesse: https://lirouanalytics.site
 
