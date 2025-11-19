@@ -19,26 +19,14 @@ class Config {
     }
 
     getBackendUrls() {
-        if (this.environment === 'development') {
-            return {
-                base: 'http://localhost:8001',
-                classify: 'http://localhost:8001/classify',
-                classifyFile: 'http://localhost:8001/classify/file',
-                upload: 'http://localhost:8001/upload', 
-                health: 'http://localhost:8001/health',
-                modelStatus: 'http://localhost:8001/model-status'
-            };
-        } else {
-            // ✅ SUBSTITUIR pela SUA VPS
-            return {
-                base: 'http://18.219.41.143:8001',
-                classify: 'http://18.219.41.143:8001/classify',
-                classifyFile: 'http://18.219.41.143:8001/classify/file',
-                upload: 'http://18.219.41.143:8001/upload',
-                health: 'http://18.219.41.143:8001/health',
-                modelStatus: 'http://18.219.41.143:8001/model-status'
-            };
-        }
+        return {
+            base: 'http://18.219.41.143:8001',
+            classify: 'http://18.219.41.143:8001/classify',
+            classifyFile: 'http://18.219.41.143:8001/classify/file',
+            upload: 'http://18.219.41.143:8001/upload',
+            health: 'http://18.219.41.143:8001/health',
+            modelStatus: 'http://18.219.41.143:8001/model-status'
+        };
     }
 
     getApiUrl(endpoint) {
