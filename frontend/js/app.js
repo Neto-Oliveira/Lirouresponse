@@ -113,29 +113,39 @@ class EmailClassifierApp {
     }
 
     async checkBackendStatus() {
-        try {
-            const response = await fetch(CONFIG.getApiUrl('health'), {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json'
-                },
-                timeout: 10000 // 10 segundos
-            });
-            
-            if (response.ok) {
+    try {
+        // Tenta primeiro o endpoint raiz
+        const response = await fetch(CONFIG.getApiUrl('health'), {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+        
+        // Se receber HTML, tenta parsear como JSON ou verifica se é a documentação
+        const contentType = response.headers.get('content-type') || '';
+        
+        if (response.ok) {
+            if (contentType.includes('application/json')) {
                 const data = await response.json();
                 this.backendAvailable = true;
                 console.log('✅ Backend conectado:', data);
                 this.updateBackendStatus(true);
             } else {
-                console.warn('⚠️ Backend com status não ideal');
-                this.updateBackendStatus(false);
+                // Se não é JSON mas retornou OK, considera online
+                this.backendAvailable = true;
+                console.log('✅ Backend respondendo (HTML)');
+                this.updateBackendStatus(true);
             }
-        } catch (error) {
-            console.error('❌ Backend não disponível:', error);
+        } else {
+            console.warn('⚠️ Backend com status não ideal');
             this.updateBackendStatus(false);
         }
+    } catch (error) {
+        console.error('❌ Backend não disponível:', error);
+        this.updateBackendStatus(false);
     }
+}
 
     updateBackendStatus(available) {
         this.backendAvailable = available;
