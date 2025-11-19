@@ -11,26 +11,37 @@ class Config {
         const hostname = window.location.hostname;
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
             return 'development';
-        } else if (hostname.includes('vercel.app')) {
-            return 'production';
         } else {
             return 'production';
         }
     }
 
     getBackendUrls() {
-        return {
-            base: 'http://18.219.41.143:8001',
-            classify: 'http://18.219.41.143:8001/classify',
-            classifyFile: 'http://18.219.41.143:8001/classify/file',
-            upload: 'http://18.219.41.143:8001/upload',
-            health: 'http://18.219.41.143:8001/health',
-            modelStatus: 'http://18.219.41.143:8001/model-status'
-        };
+        if (this.environment === 'development') {
+            return {
+                base: 'http://18.219.41.143:8001',
+                classify: 'http://18.219.41.143:8001/classify',
+                classifyFile: 'http://18.219.41.143:8001/classify/file',
+                upload: 'http://18.219.41.143:8001/upload',
+                health: 'http://18.219.41.143:8001/health',
+                modelStatus: 'http://18.219.41.143:8001/model-status'
+            };
+        } else {
+            // Em produção, usa as rotas relativas através do proxy do Vercel
+            return {
+                base: '',
+                classify: '/api/classify',
+                classifyFile: '/api/classify/file',
+                upload: '/api/upload',
+                health: '/api/health',
+                modelStatus: '/api/model-status'
+            };
+        }
     }
 
     getApiUrl(endpoint) {
-        return this.backendUrls[endpoint] || `${this.backendUrls.base}${endpoint}`;
+        const urls = this.backendUrls;
+        return urls[endpoint] || `${urls.base}${endpoint}`;
     }
 }
 

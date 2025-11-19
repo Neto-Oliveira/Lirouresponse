@@ -24,6 +24,10 @@
       "dest": "/js/$1"
     },
     {
+      "src": "/api/:path*",
+      "dest": "http://18.219.41.143:8001/:path*"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
