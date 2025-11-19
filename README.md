@@ -1,9 +1,16 @@
-📧 Lirou Analytics — Classificador de Emails
+Aqui está o README em um único bloco, pronto para CTRL+C / CTRL+V, sem interrupções:
+
+# 📧 Lirou Analytics — Classificador de Emails
 
 Classificação inteligente de emails com IA para identificar mensagens produtivas vs improdutivas.
 
-🚀 Como Executar
-Backend (FastAPI)
+---
+
+## 🚀 Como Executar
+
+### Backend (FastAPI)
+
+```bash
 cd backend
 pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8001 --reload
@@ -42,8 +49,11 @@ A       api     SEU_IP_VPS            (Backend)
 🎯 Funcionalidades
 
 ✅ Classificação automática de emails
+
 ✅ Upload de arquivos (.txt, .pdf)
+
 ✅ Respostas sugeridas por IA
+
 ✅ Interface responsiva
 
 🌍 Acesse o Projeto
@@ -51,3 +61,6 @@ A       api     SEU_IP_VPS            (Backend)
 🔗 https://lirouanalytics.site
 
 Desenvolvido com FastAPI + JavaScript + Vercel
+
+
+Se quiser, posso deixar esse README ainda mais profissional com **badges, capa, logo, GIF**
