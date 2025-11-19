@@ -23,7 +23,7 @@ class Config {
                 classify: 'http://18.219.41.143:8001/classify',
                 classifyFile: 'http://18.219.41.143:8001/classify/file',
                 upload: 'http://18.219.41.143:8001/upload',
-                health: 'http://18.219.41.143:8001/health',
+                health: 'http://18.219.41.143:8001/', // ✅ Endpoint raiz correto
                 modelStatus: 'http://18.219.41.143:8001/model-status'
             };
         } else {
@@ -33,7 +33,7 @@ class Config {
                 classify: '/api/classify',
                 classifyFile: '/api/classify/file',
                 upload: '/api/upload',
-                health: '/api/health',
+                health: '/api/', // ✅ Endpoint raiz correto
                 modelStatus: '/api/model-status'
             };
         }
